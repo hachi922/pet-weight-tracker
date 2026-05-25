@@ -208,8 +208,19 @@ function updateHeaders() {
 }
 
 function toggleYear(year) {
-  if (collapsedYears.has(year)) collapsedYears.delete(year);
-  else collapsedYears.add(year);
+  const currentYear = String(new Date().getFullYear());
+  const defaultOpen = year === currentYear;
+  const manualOpen  = collapsedYears.has('open:' + year);
+  const manualClose = collapsedYears.has('close:' + year);
+  const nowOpen = manualOpen ? true : manualClose ? false : defaultOpen;
+  // トグル
+  collapsedYears.delete('open:' + year);
+  collapsedYears.delete('close:' + year);
+  if (nowOpen) {
+    collapsedYears.add('close:' + year);
+  } else {
+    collapsedYears.add('open:' + year);
+  }
   renderTable();
 }
 
@@ -225,10 +236,20 @@ function renderTable() {
   });
 
   const years = Object.keys(byYear).sort((a, b) => b - a);
+  const currentYear = String(new Date().getFullYear());
 
   years.forEach(year => {
     const rows   = byYear[year].sort((a, b) => b.row.date.localeCompare(a.row.date));
-    const isOpen = !collapsedYears.has(year);
+    // 今年はデフォルトで開く。前年以前はデフォルトで折り畳む。
+    // ユーザーが手動でトグルした年は collapsedYears で管理。
+    let isOpen;
+    if (collapsedYears.has('open:' + year)) {
+      isOpen = true;  // 手動で開いた
+    } else if (collapsedYears.has('close:' + year)) {
+      isOpen = false; // 手動で閉じた
+    } else {
+      isOpen = year === currentYear; // デフォルト：今年のみ開く
+    }
     const group  = document.createElement('div');
     group.className = 'year-group';
 
@@ -328,7 +349,8 @@ function addRow() {
   if (weightData.some(r => r.date === today)) { warn.style.display = 'block'; return; }
   warn.style.display = 'none';
   weightData.unshift({ date: today, w: [null, null, null] });
-  collapsedYears.delete(today.slice(0, 4));
+  // 行追加時は今年を強制的に開く
+  collapsedYears.delete('close:' + today.slice(0, 4));
   renderTable();
   saveAll().catch(() => {}); // 保存失敗してもUIは止めない
 }
