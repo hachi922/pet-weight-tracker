@@ -11,37 +11,34 @@
 <div class="app" id="app">
   <div class="toast" id="toast"></div>
 
-  <!-- ローディングオーバーレイ -->
   <div id="loadingOverlay">
     <div class="loading-spinner"></div>
     <div class="loading-text">読み込み中…</div>
   </div>
 
+  <div class="dialog-overlay" id="dialogOverlay">
+    <div class="dialog">
+      <div class="dialog-title">削除しますか？</div>
+      <div class="dialog-msg" id="dialogMsg"></div>
+      <div class="dialog-btns">
+        <button class="dialog-cancel" onclick="closeDialog()">キャンセル</button>
+        <button class="dialog-ok" onclick="confirmDelete()">削除</button>
+      </div>
+    </div>
+  </div>
+
   <div class="content">
 
-    <!-- 体重記録 -->
     <div class="panel active" id="panel0">
-      <div class="tbl-wrap">
-        <table>
-          <colgroup><col style="width:64px"><col><col><col></colgroup>
-          <thead><tr>
-            <th>日付</th>
-            <th id="h0">1羽め<br><span class="unit">(g)</span></th>
-            <th id="h1">2羽め<br><span class="unit">(g)</span></th>
-            <th id="h2">3羽め<br><span class="unit">(g)</span></th>
-          </tr></thead>
-          <tbody id="weightBody"></tbody>
-        </table>
-      </div>
+      <div id="weightGroups"></div>
+      <div class="dup-warning" id="dupWarning">⚠ 同じ日付の行がすでにあります</div>
       <button class="add-row-btn" onclick="addRow()"><i class="ti ti-plus"></i> 行を追加</button>
     </div>
 
-    <!-- グラフ -->
     <div class="panel" id="panel1">
       <div class="charts-wrap" id="chartsWrap"></div>
     </div>
 
-    <!-- 通院メモ -->
     <div class="panel" id="panel2">
       <div class="vet-list" id="vetList"></div>
       <div class="add-vet-form">
@@ -58,7 +55,6 @@
       </div>
     </div>
 
-    <!-- 設定 -->
     <div class="panel" id="panel3">
       <div class="settings-section">
         <div class="settings-title"><i class="ti ti-paw"></i> ペットの名前</div>
@@ -87,10 +83,10 @@
   </div>
 
   <nav class="bottom-tabs" role="tablist">
-    <button class="btab active" onclick="switchTab(0)" role="tab" aria-label="体重記録"><i class="ti ti-scale"></i>体重記録</button>
-    <button class="btab" onclick="switchTab(1)" role="tab" aria-label="グラフ"><i class="ti ti-chart-line"></i>グラフ</button>
-    <button class="btab" onclick="switchTab(2)" role="tab" aria-label="通院メモ"><i class="ti ti-stethoscope"></i>通院メモ</button>
-    <button class="btab" onclick="switchTab(3)" role="tab" aria-label="設定"><i class="ti ti-settings"></i>設定</button>
+    <button class="btab active" onclick="switchTab(0)" role="tab"><i class="ti ti-scale"></i>体重記録</button>
+    <button class="btab" onclick="switchTab(1)" role="tab"><i class="ti ti-chart-line"></i>グラフ</button>
+    <button class="btab" onclick="switchTab(2)" role="tab"><i class="ti ti-stethoscope"></i>通院メモ</button>
+    <button class="btab" onclick="switchTab(3)" role="tab"><i class="ti ti-settings"></i>設定</button>
   </nav>
 </div>
 
