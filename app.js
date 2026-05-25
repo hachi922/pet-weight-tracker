@@ -28,7 +28,18 @@ let currentColorIdx = 0;
 let collapsedYears  = new Set();
 let pendingDelete   = null;
 
-// ── Date helpers ─────────────────────────────────────────
+// ── Date helpers
+// タイムゾーンをJSTに合わせた今日の日付を返す
+function todayJST() {
+  const now = new Date();
+  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const y = jst.getUTCFullYear();
+  const m = String(jst.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(jst.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+ ─────────────────────────────────────────
 // GASから "2026-05-24" や "2026-05-24T15:00:00.000Z" で返ることがある
 function normalizeISO(val) {
   if (!val) return null;
@@ -344,7 +355,7 @@ function setWeight(idx, bird, val) {
 }
 
 function addRow() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayJST();
   const warn  = document.getElementById('dupWarning');
   if (weightData.some(r => r.date === today)) { warn.style.display = 'block'; return; }
   warn.style.display = 'none';
@@ -523,7 +534,7 @@ function exportCSV() {
     csv += `${v.date},${v.cost},"${v.notes.replace(/"/g, '""')}"\n`;
   });
 
-  downloadBlob(csv, 'pet_data_' + new Date().toISOString().slice(0,10) + '.csv', 'text/csv;charset=utf-8');
+  downloadBlob(csv, 'pet_data_' + todayJST() + '.csv', 'text/csv;charset=utf-8');
   showToast('CSVエクスポートしました');
 }
 
