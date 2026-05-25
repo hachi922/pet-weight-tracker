@@ -388,7 +388,7 @@ function buildChart(id, bi) {
   const datasets = [{
     label: '実測', data,
     borderColor: col, backgroundColor: col + '28',
-    borderWidth: 2, pointRadius: 3, pointBackgroundColor: col,
+    borderWidth: 2, pointRadius: 2, pointHoverRadius: 4, pointBackgroundColor: col,
     fill: true, tension: 0.35,
   }];
 
