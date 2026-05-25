@@ -29,8 +29,16 @@ let collapsedYears  = new Set();
 let pendingDelete   = null;
 
 // ── Date helpers ─────────────────────────────────────────
+// GASから "2026-05-24" や "2026-05-24T15:00:00.000Z" で返ることがある
+function normalizeISO(val) {
+  if (!val) return null;
+  const m = String(val).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+}
+
 function toDisplay(iso) {
-  const p = iso.split('-');
+  const s = normalizeISO(iso) || String(iso);
+  const p = s.split('-');
   return p[0].slice(2) + '/' + p[1] + '/' + p[2];
 }
 
