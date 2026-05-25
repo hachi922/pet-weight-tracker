@@ -109,7 +109,6 @@ async function saveAll() {
 async function init() {
   showLoading(true);
   buildColorGrid();
-  buildChartCards();
 
   try {
     const d = await apiLoad();
@@ -125,12 +124,12 @@ async function init() {
       if (d.config.goalWeights) goalWeights = d.config.goalWeights;
       if (typeof d.config.themeIdx === 'number') applyTheme(d.config.themeIdx);
     }
-  } catch {
-    showToast('データの読み込みに失敗しました');
+  } catch (e) {
+    showToast('データの読み込みに失敗しました（オフライン？）');
   }
 
   showLoading(false);
-  updateHeaders();
+  buildChartCards();
   renderTable();
   renderVet();
 }
@@ -187,7 +186,12 @@ function downloadBlob(content, filename, type) {
 }
 
 // ── Weight table ─────────────────────────────────────────
-function onNameInput() { updateHeaders(); saveAll(); }
+function onNameInput() {
+  buildChartCards();
+  if (charts[0]) refreshCharts();
+  renderTable();
+  saveAll();
+}
 
 function updateHeaders() {
   buildChartCards();
@@ -318,7 +322,7 @@ function addRow() {
   weightData.unshift({ date: today, w: [null, null, null] });
   collapsedYears.delete(today.slice(0, 4));
   renderTable();
-  saveAll();
+  saveAll().catch(() => {}); // 保存失敗してもUIは止めない
 }
 
 // ── Charts ───────────────────────────────────────────────
