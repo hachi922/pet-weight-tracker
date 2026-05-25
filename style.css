@@ -53,7 +53,7 @@ body {
 .content {
   flex: 1;
   overflow: auto;
-  padding: 12px;
+  padding: 10px;
   padding-bottom: 72px;
 }
 
@@ -100,30 +100,6 @@ body {
 .panel.active { display: block; }
 
 /* Weight table */
-.label-sm {
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-bottom: 4px;
-}
-
-.bird-names {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.bird-name-input {
-  flex: 1;
-  font-size: 12px;
-  padding: 4px 6px;
-  border: 0.5px solid var(--border-md);
-  border-radius: 4px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  text-align: center;
-  font-family: inherit;
-}
-
 .tbl-wrap { overflow-x: auto; }
 
 table {
@@ -144,7 +120,6 @@ th {
 }
 
 th:first-child { text-align: left; }
-
 .unit { font-size: 10px; font-weight: 400; }
 
 td {
@@ -224,7 +199,7 @@ td input[type=number] {
 }
 
 .goal-input {
-  width: 56px;
+  width: 52px;
   font-size: 12px;
   padding: 2px 4px;
   border: 0.5px solid var(--border-md);
@@ -235,10 +210,7 @@ td input[type=number] {
   font-family: inherit;
 }
 
-.goal-unit {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
+.goal-unit { font-size: 11px; color: var(--text-secondary); }
 
 .legend-row {
   display: flex;
@@ -255,30 +227,13 @@ td input[type=number] {
   color: var(--text-secondary);
 }
 
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-}
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+.legend-dash { width: 16px; height: 0; border-top: 2px dashed #E24B4A; }
 
-.legend-dash {
-  width: 16px;
-  height: 0;
-  border-top: 2px dashed #E24B4A;
-}
-
-.chart-wrap {
-  position: relative;
-  height: 120px;
-}
+.chart-wrap { position: relative; height: 120px; }
 
 /* Vet */
-.vet-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 10px;
-}
+.vet-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
 
 .vet-card {
   background: var(--bg-primary);
@@ -295,18 +250,8 @@ td input[type=number] {
 }
 
 .vet-date { font-size: 13px; font-weight: 500; }
-
-.vet-cost {
-  font-size: 13px;
-  color: var(--accent);
-  font-weight: 500;
-}
-
-.vet-notes {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
+.vet-cost { font-size: 13px; color: var(--accent); font-weight: 500; }
+.vet-notes { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
 
 .vet-del {
   background: none;
@@ -325,16 +270,13 @@ td input[type=number] {
 }
 
 .form-section-title {
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
-  margin-bottom: 6px;
-}
-
-.form-row {
-  display: flex;
-  gap: 8px;
   margin-bottom: 8px;
 }
+
+.form-row { display: flex; gap: 8px; margin-bottom: 8px; }
 
 .form-col {
   flex: 1;
@@ -343,10 +285,7 @@ td input[type=number] {
   gap: 3px;
 }
 
-.form-col label {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
+.form-col label { font-size: 11px; color: var(--text-secondary); }
 
 .form-col input,
 .form-col textarea {
@@ -359,10 +298,7 @@ td input[type=number] {
   font-family: inherit;
 }
 
-.form-col textarea {
-  resize: vertical;
-  min-height: 52px;
-}
+.form-col textarea { resize: vertical; min-height: 52px; }
 
 .save-btn {
   width: 100%;
@@ -391,11 +327,36 @@ td input[type=number] {
   border-bottom: 0.5px solid var(--border);
 }
 
-.settings-title i {
-  font-size: 15px;
-  vertical-align: -2px;
+.settings-title i { font-size: 15px; vertical-align: -2px; }
+
+/* Pet names */
+.pet-name-rows { display: flex; flex-direction: column; gap: 8px; }
+
+.pet-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
+.pet-name-row label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  width: 36px;
+  flex-shrink: 0;
+}
+
+.pet-name-row input {
+  flex: 1;
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 0.5px solid var(--border-md);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+/* Colors */
 .color-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -417,12 +378,9 @@ td input[type=number] {
   transform: scale(1.15);
 }
 
-.color-label {
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-top: 6px;
-}
+.color-label { font-size: 11px; color: var(--text-secondary); margin-top: 6px; }
 
+/* Backup */
 .backup-btns { display: flex; flex-direction: column; gap: 8px; }
 
 .backup-btn {
@@ -441,22 +399,10 @@ td input[type=number] {
 }
 
 .backup-btn:hover { background: var(--bg-secondary); }
+.backup-btn i { font-size: 18px; color: var(--accent); }
 
-.backup-btn i {
-  font-size: 18px;
-  color: var(--accent);
-}
-
-.backup-btn-text {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.backup-btn-sub {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
+.backup-btn-text { display: flex; flex-direction: column; gap: 1px; }
+.backup-btn-sub { font-size: 11px; color: var(--text-secondary); }
 
 /* Toast */
 .toast {

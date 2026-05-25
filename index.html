@@ -14,15 +14,9 @@
 
     <!-- 体重記録 -->
     <div class="panel active" id="panel0">
-      <div class="label-sm">ペットの名前（編集可）</div>
-      <div class="bird-names">
-        <input class="bird-name-input" id="name0" value="ぴっぴ" oninput="updateHeaders()">
-        <input class="bird-name-input" id="name1" value="もも" oninput="updateHeaders()">
-        <input class="bird-name-input" id="name2" value="きな" oninput="updateHeaders()">
-      </div>
       <div class="tbl-wrap">
         <table>
-          <colgroup><col style="width:72px"><col><col><col></colgroup>
+          <colgroup><col style="width:64px"><col><col><col></colgroup>
           <thead><tr>
             <th>日付</th>
             <th id="h0">ぴっぴ<br><span class="unit">(g)</span></th>
@@ -44,7 +38,7 @@
     <div class="panel" id="panel2">
       <div class="vet-list" id="vetList"></div>
       <div class="add-vet-form">
-        <div class="label-sm form-section-title"><i class="ti ti-plus"></i> 通院記録を追加</div>
+        <div class="form-section-title"><i class="ti ti-plus"></i> 通院記録を追加</div>
         <div class="form-row">
           <div class="form-col"><label>日付</label><input type="date" id="vetDate"></div>
           <div class="form-col"><label>費用（円）</label><input type="number" id="vetCost" placeholder="3500"></div>
@@ -59,6 +53,14 @@
 
     <!-- 設定 -->
     <div class="panel" id="panel3">
+      <div class="settings-section">
+        <div class="settings-title"><i class="ti ti-paw"></i> ペットの名前</div>
+        <div class="pet-name-rows">
+          <div class="pet-name-row"><label>1羽め</label><input type="text" id="name0" value="ぴっぴ" oninput="updateHeaders()"></div>
+          <div class="pet-name-row"><label>2羽め</label><input type="text" id="name1" value="もも" oninput="updateHeaders()"></div>
+          <div class="pet-name-row"><label>3羽め</label><input type="text" id="name2" value="きな" oninput="updateHeaders()"></div>
+        </div>
+      </div>
       <div class="settings-section">
         <div class="settings-title"><i class="ti ti-palette"></i> テーマカラー</div>
         <div class="color-grid" id="colorGrid"></div>

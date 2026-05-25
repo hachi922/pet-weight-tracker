@@ -1,18 +1,18 @@
 'use strict';
 
 const PASTEL_COLORS = [
-  { name: 'ラベンダー', main: '#7F77DD', light: '#EEEDFE', dark: '#3C3489' },
-  { name: 'ミント',     main: '#5DCAA5', light: '#E1F5EE', dark: '#085041' },
-  { name: 'スカイ',     main: '#85B7EB', light: '#E6F1FB', dark: '#0C447C' },
-  { name: 'コーラル',   main: '#F0997B', light: '#FAECE7', dark: '#712B13' },
-  { name: 'ローズ',     main: '#ED93B1', light: '#FBEAF0', dark: '#72243E' },
-  { name: 'ピーチ',     main: '#FAC775', light: '#FAEEDA', dark: '#633806' },
-  { name: 'ライム',     main: '#97C459', light: '#EAF3DE', dark: '#27500A' },
+  { name: 'ラベンダー',   main: '#7F77DD', light: '#EEEDFE', dark: '#3C3489' },
+  { name: 'ミント',       main: '#5DCAA5', light: '#E1F5EE', dark: '#085041' },
+  { name: 'スカイ',       main: '#85B7EB', light: '#E6F1FB', dark: '#0C447C' },
+  { name: 'コーラル',     main: '#F0997B', light: '#FAECE7', dark: '#712B13' },
+  { name: 'ローズ',       main: '#ED93B1', light: '#FBEAF0', dark: '#72243E' },
+  { name: 'ピーチ',       main: '#FAC775', light: '#FAEEDA', dark: '#633806' },
+  { name: 'ライム',       main: '#97C459', light: '#EAF3DE', dark: '#27500A' },
   { name: 'ベビーブルー', main: '#B5D4F4', light: '#E6F1FB', dark: '#185FA5' },
-  { name: 'サーモン',   main: '#F5C4B3', light: '#FAECE7', dark: '#993C1D' },
-  { name: 'ライラック', main: '#AFA9EC', light: '#EEEDFE', dark: '#534AB7' },
-  { name: 'アクア',     main: '#9FE1CB', light: '#E1F5EE', dark: '#0F6E56' },
-  { name: 'バター',     main: '#EF9F27', light: '#FAEEDA', dark: '#854F0B' },
+  { name: 'サーモン',     main: '#F5C4B3', light: '#FAECE7', dark: '#993C1D' },
+  { name: 'ライラック',   main: '#AFA9EC', light: '#EEEDFE', dark: '#534AB7' },
+  { name: 'アクア',       main: '#9FE1CB', light: '#E1F5EE', dark: '#0F6E56' },
+  { name: 'バター',       main: '#EF9F27', light: '#FAEEDA', dark: '#854F0B' },
 ];
 
 let weightData = [
@@ -350,8 +350,8 @@ function importData(input) {
   reader.onload = e => {
     try {
       const d = JSON.parse(e.target.result);
-      if (d.weightData) weightData = d.weightData;
-      if (d.vetData)    vetData    = d.vetData;
+      if (d.weightData)  weightData  = d.weightData;
+      if (d.vetData)     vetData     = d.vetData;
       if (d.goalWeights) goalWeights = d.goalWeights;
       if (d.names) {
         d.names.forEach((n, i) => {
