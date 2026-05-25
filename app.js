@@ -2,7 +2,7 @@
 
 // =====================================================
 // ★ここにGoogle Apps ScriptのURLを貼り付けてください★
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzr9HPjLCASNLLEza_pzS5nYixHAUiK6fvLPvsQPpccNn09ROFaQ-bokJ39txQhZ_Jk/exec';
+const GAS_URL = 'YOUR_GAS_URL_HERE';
 // =====================================================
 
 const PASTEL_COLORS = [
@@ -25,12 +25,57 @@ let vetData     = [];
 let goalWeights = [null, null, null];
 let charts      = [null, null, null];
 let currentColorIdx = 0;
+let collapsedYears  = new Set();
+let pendingDelete   = null;
+
+// ── Date helpers ─────────────────────────────────────────
+function toDisplay(iso) {
+  const p = iso.split('-');
+  return p[0].slice(2) + '/' + p[1] + '/' + p[2];
+}
+
+function toISO(disp) {
+  const p = disp.replace(/-/g, '/').split('/');
+  if (p.length !== 3) return null;
+  let [y, m, d] = p;
+  if (y.length === 2) y = '20' + y;
+  if (y.length !== 4) return null;
+  const iso = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  return isNaN(Date.parse(iso)) ? null : iso;
+}
+
+// ── Dialog ────────────────────────────────────────────────
+function askDelete(type, idx, msg) {
+  pendingDelete = { type, idx };
+  document.getElementById('dialogMsg').textContent = msg;
+  document.getElementById('dialogOverlay').classList.add('show');
+}
+
+function closeDialog() {
+  pendingDelete = null;
+  document.getElementById('dialogOverlay').classList.remove('show');
+}
+
+function confirmDelete() {
+  if (!pendingDelete) return;
+  const { type, idx } = pendingDelete;
+  closeDialog();
+  if (type === 'row') {
+    weightData.splice(idx, 1);
+    renderTable();
+    if (charts[0]) refreshCharts();
+    saveAll();
+  } else if (type === 'vet') {
+    vetData.splice(idx, 1);
+    renderVet();
+    saveAll();
+  }
+}
 
 // ── API ──────────────────────────────────────────────────
 async function apiLoad() {
-  const res  = await fetch(GAS_URL + '?action=load');
-  const json = await res.json();
-  return json;
+  const res = await fetch(GAS_URL + '?action=load');
+  return res.json();
 }
 
 async function apiSave(data) {
@@ -53,10 +98,8 @@ function buildSavePayload() {
 }
 
 async function saveAll() {
-  showToast('保存中…');
   try {
     await apiSave(buildSavePayload());
-    showToast('保存しました');
   } catch {
     showToast('保存に失敗しました');
   }
@@ -70,8 +113,8 @@ async function init() {
 
   try {
     const d = await apiLoad();
-    if (d.weightData)          weightData  = d.weightData;
-    if (d.vetData)             vetData     = d.vetData;
+    if (d.weightData) weightData = d.weightData;
+    if (d.vetData)    vetData    = d.vetData;
     if (d.config) {
       if (d.config.names) {
         d.config.names.forEach((n, i) => {
@@ -144,31 +187,121 @@ function downloadBlob(content, filename, type) {
 }
 
 // ── Weight table ─────────────────────────────────────────
+function onNameInput() { updateHeaders(); saveAll(); }
+
 function updateHeaders() {
-  for (let i = 0; i < 3; i++) {
-    const n = getBirdName(i);
-    document.getElementById('h' + i).innerHTML =
-      n + '<br><span class="unit">(g)</span>';
-  }
   buildChartCards();
   if (charts[0]) refreshCharts();
+  renderTable();
+}
+
+function toggleYear(year) {
+  if (collapsedYears.has(year)) collapsedYears.delete(year);
+  else collapsedYears.add(year);
+  renderTable();
 }
 
 function renderTable() {
-  const body = document.getElementById('weightBody');
-  body.innerHTML = '';
-  const sorted = [...weightData].sort((a, b) => b.date.localeCompare(a.date));
-  sorted.forEach(row => {
-    const ri = weightData.indexOf(row);
-    const tr = document.createElement('tr');
-    tr.innerHTML =
-      `<td>${row.date.replace(/-/g, '/')}</td>` +
-      [0, 1, 2].map(i =>
-        `<td><input type="number" step="0.1" value="${row.w[i] || ''}" placeholder="-"
-          onchange="setWeight(${ri}, ${i}, this.value)"></td>`
-      ).join('');
-    body.appendChild(tr);
+  const wrap = document.getElementById('weightGroups');
+  wrap.innerHTML = '';
+
+  const byYear = {};
+  weightData.forEach((row, ri) => {
+    const y = row.date.slice(0, 4);
+    if (!byYear[y]) byYear[y] = [];
+    byYear[y].push({ row, ri });
   });
+
+  const years = Object.keys(byYear).sort((a, b) => b - a);
+
+  years.forEach(year => {
+    const rows   = byYear[year].sort((a, b) => b.row.date.localeCompare(a.row.date));
+    const isOpen = !collapsedYears.has(year);
+    const group  = document.createElement('div');
+    group.className = 'year-group';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'year-header';
+    hdr.onclick = () => toggleYear(year);
+    hdr.innerHTML = `
+      <span class="year-label">${year}年</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <span class="year-meta">${rows.length}件</span>
+        <i class="ti ti-chevron-down year-chevron ${isOpen ? 'open' : ''}"></i>
+      </span>`;
+    group.appendChild(hdr);
+
+    const body = document.createElement('div');
+    body.className = 'year-body' + (isOpen ? '' : ' collapsed');
+
+    const names = [0,1,2].map(i => getBirdName(i));
+    const tbl   = document.createElement('table');
+    // 日付:54px 体重3列:auto 削除:22px
+    tbl.innerHTML = `
+      <colgroup><col style="width:54px"><col><col><col><col style="width:22px"></colgroup>
+      <thead><tr>
+        <th>日付</th>
+        <th>${names[0]}<br><span class="unit">(g)</span></th>
+        <th>${names[1]}<br><span class="unit">(g)</span></th>
+        <th>${names[2]}<br><span class="unit">(g)</span></th>
+        <th></th>
+      </tr></thead>`;
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(({ row, ri }) => {
+      const disp = toDisplay(row.date);
+      const tr   = document.createElement('tr');
+      tr.innerHTML =
+        `<td>
+          <span class="date-display" id="dd-${ri}" onclick="startEditDate(${ri})">${disp}</span>
+          <input class="date-edit" id="de-${ri}" type="text" value="${disp}" placeholder="yy/mm/dd"
+            onblur="commitDate(${ri})" onkeydown="if(event.key==='Enter')this.blur()">
+        </td>` +
+        [0,1,2].map(i =>
+          `<td><input type="number" step="0.1" value="${row.w[i] || ''}" placeholder="-"
+            onchange="setWeight(${ri}, ${i}, this.value)"></td>`
+        ).join('') +
+        `<td><button class="del-btn" onclick="askDelete('row', ${ri}, '${disp} のデータを削除します')" aria-label="削除">
+          <i class="ti ti-trash"></i>
+        </button></td>`;
+      tbody.appendChild(tr);
+    });
+
+    tbl.appendChild(tbody);
+    body.appendChild(tbl);
+    group.appendChild(body);
+    wrap.appendChild(group);
+
+    if (isOpen) body.style.maxHeight = (body.scrollHeight + 200) + 'px';
+  });
+}
+
+function startEditDate(ri) {
+  document.getElementById('dd-' + ri)?.classList.add('hidden');
+  const inp = document.getElementById('de-' + ri);
+  if (!inp) return;
+  inp.classList.add('active');
+  inp.focus();
+  inp.select();
+}
+
+function commitDate(ri) {
+  const inp  = document.getElementById('de-' + ri);
+  if (!inp) return;
+  const iso  = toISO(inp.value.trim());
+  const warn = document.getElementById('dupWarning');
+  if (!iso) {
+    inp.value = toDisplay(weightData[ri].date);
+  } else if (weightData.some((r, i) => i !== ri && r.date === iso)) {
+    warn.style.display = 'block';
+    inp.value = toDisplay(weightData[ri].date);
+  } else {
+    warn.style.display = 'none';
+    weightData[ri].date = iso;
+    saveAll();
+  }
+  inp.classList.remove('active');
+  renderTable();
 }
 
 function setWeight(idx, bird, val) {
@@ -179,7 +312,11 @@ function setWeight(idx, bird, val) {
 
 function addRow() {
   const today = new Date().toISOString().slice(0, 10);
+  const warn  = document.getElementById('dupWarning');
+  if (weightData.some(r => r.date === today)) { warn.style.display = 'block'; return; }
+  warn.style.display = 'none';
   weightData.unshift({ date: today, w: [null, null, null] });
+  collapsedYears.delete(today.slice(0, 4));
   renderTable();
   saveAll();
 }
@@ -204,7 +341,7 @@ function buildChartCards() {
     wrap.innerHTML += `
       <div class="chart-card">
         <div class="chart-header">
-          <div class="chart-title" id="ct${i}">${name} 体重推移</div>
+          <div class="chart-title">${name} 体重推移</div>
           <div class="goal-row">
             <span class="goal-label">目標</span>
             <input class="goal-input" type="number" step="0.1" value="${gv}"
@@ -289,15 +426,18 @@ function renderVet() {
   list.innerHTML = sorted.length === 0
     ? '<p style="font-size:13px;color:var(--text-secondary)">まだ記録がありません</p>' : '';
   sorted.forEach(v => {
-    const ri   = vetData.indexOf(v);
-    const card = document.createElement('div');
+    const ri       = vetData.indexOf(v);
+    const safeDate = v.date.replace(/-/g, '/');
+    const card     = document.createElement('div');
     card.className = 'vet-card';
     card.innerHTML = `
       <div class="vet-card-header">
-        <span class="vet-date"><i class="ti ti-calendar" style="font-size:13px"></i> ${v.date.replace(/-/g, '/')}</span>
+        <span class="vet-date"><i class="ti ti-calendar" style="font-size:13px"></i> ${safeDate}</span>
         <span style="display:flex;align-items:center;gap:8px">
           <span class="vet-cost">¥${v.cost.toLocaleString()}</span>
-          <button class="vet-del" onclick="delVet(${ri})" aria-label="削除"><i class="ti ti-x"></i></button>
+          <button class="vet-del" onclick="askDelete('vet', ${ri}, '${safeDate} の通院記録を削除します')" aria-label="削除">
+            <i class="ti ti-x"></i>
+          </button>
         </span>
       </div>
       <div class="vet-notes">${v.notes.replace(/\n/g, '<br>')}</div>`;
@@ -316,12 +456,7 @@ function addVet() {
   document.getElementById('vetNotes').value = '';
   renderVet();
   saveAll();
-}
-
-function delVet(idx) {
-  vetData.splice(idx, 1);
-  renderVet();
-  saveAll();
+  showToast('保存しました');
 }
 
 // ── Tab switching ────────────────────────────────────────
@@ -331,17 +466,12 @@ function switchTab(n) {
   if (n === 1) setTimeout(refreshCharts, 60);
 }
 
-// ── Settings ─────────────────────────────────────────────
-function onNameInput() {
-  updateHeaders();
-  saveAll();
-}
-
-// ── Backup (local) ───────────────────────────────────────
+// ── CSV Export ───────────────────────────────────────────
 function exportCSV() {
-  const names = [0, 1, 2].map(i => getBirdName(i));
+  const names = [0,1,2].map(i => getBirdName(i));
   const BOM   = '\uFEFF';
   let csv = BOM;
+
   csv += '【体重記録】\n';
   csv += `日付,${names[0]}(g),${names[1]}(g),${names[2]}(g)\n`;
   [...weightData].sort((a, b) => b.date.localeCompare(a.date)).forEach(r => {
@@ -349,13 +479,16 @@ function exportCSV() {
       r.w[i] != null && r.w[i] !== 0 ? parseFloat(r.w[i].toFixed(1)) : ''
     ).join(',') + '\n';
   });
+
   csv += '\n【目標体重】\n';
   csv += names.map(n => n + '目標(g)').join(',') + '\n';
   csv += goalWeights.map(g => g != null ? parseFloat(g.toFixed(1)) : '').join(',') + '\n';
+
   csv += '\n【通院記録】\n日付,費用(円),治療・検査内容\n';
   [...vetData].sort((a, b) => b.date.localeCompare(a.date)).forEach(v => {
     csv += `${v.date},${v.cost},"${v.notes.replace(/"/g, '""')}"\n`;
   });
+
   downloadBlob(csv, 'pet_data_' + new Date().toISOString().slice(0,10) + '.csv', 'text/csv;charset=utf-8');
   showToast('CSVエクスポートしました');
 }
