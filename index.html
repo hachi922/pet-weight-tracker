@@ -10,6 +10,13 @@
 <body>
 <div class="app" id="app">
   <div class="toast" id="toast"></div>
+
+  <!-- ローディングオーバーレイ -->
+  <div id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">読み込み中…</div>
+  </div>
+
   <div class="content">
 
     <!-- 体重記録 -->
@@ -19,9 +26,9 @@
           <colgroup><col style="width:64px"><col><col><col></colgroup>
           <thead><tr>
             <th>日付</th>
-            <th id="h0">ぴっぴ<br><span class="unit">(g)</span></th>
-            <th id="h1">もも<br><span class="unit">(g)</span></th>
-            <th id="h2">きな<br><span class="unit">(g)</span></th>
+            <th id="h0">1羽め<br><span class="unit">(g)</span></th>
+            <th id="h1">2羽め<br><span class="unit">(g)</span></th>
+            <th id="h2">3羽め<br><span class="unit">(g)</span></th>
           </tr></thead>
           <tbody id="weightBody"></tbody>
         </table>
@@ -56,9 +63,9 @@
       <div class="settings-section">
         <div class="settings-title"><i class="ti ti-paw"></i> ペットの名前</div>
         <div class="pet-name-rows">
-          <div class="pet-name-row"><label>1羽め</label><input type="text" id="name0" value="ぴっぴ" oninput="updateHeaders()"></div>
-          <div class="pet-name-row"><label>2羽め</label><input type="text" id="name1" value="もも" oninput="updateHeaders()"></div>
-          <div class="pet-name-row"><label>3羽め</label><input type="text" id="name2" value="きな" oninput="updateHeaders()"></div>
+          <div class="pet-name-row"><label>1羽め</label><input type="text" id="name0" value="ぴっぴ" oninput="onNameInput()"></div>
+          <div class="pet-name-row"><label>2羽め</label><input type="text" id="name1" value="もも" oninput="onNameInput()"></div>
+          <div class="pet-name-row"><label>3羽め</label><input type="text" id="name2" value="きな" oninput="onNameInput()"></div>
         </div>
       </div>
       <div class="settings-section">
@@ -67,21 +74,12 @@
         <div class="color-label" id="colorLabel">現在：ラベンダー</div>
       </div>
       <div class="settings-section">
-        <div class="settings-title"><i class="ti ti-database"></i> バックアップ</div>
+        <div class="settings-title"><i class="ti ti-database"></i> エクスポート</div>
         <div class="backup-btns">
-          <button class="backup-btn" onclick="exportJSON()">
-            <i class="ti ti-download"></i>
-            <div class="backup-btn-text"><span>JSONエクスポート</span><span class="backup-btn-sub">全データをJSONファイルで保存</span></div>
-          </button>
           <button class="backup-btn" onclick="exportCSV()">
             <i class="ti ti-table-export"></i>
             <div class="backup-btn-text"><span>CSVエクスポート</span><span class="backup-btn-sub">体重・通院データをCSVで保存</span></div>
           </button>
-          <button class="backup-btn" onclick="document.getElementById('importFile').click()">
-            <i class="ti ti-upload"></i>
-            <div class="backup-btn-text"><span>インポート</span><span class="backup-btn-sub">JSONバックアップファイルから復元</span></div>
-          </button>
-          <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this)">
         </div>
       </div>
     </div>

@@ -1,5 +1,10 @@
 'use strict';
 
+// =====================================================
+// ★ここにGoogle Apps ScriptのURLを貼り付けてください★
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzr9HPjLCASNLLEza_pzS5nYixHAUiK6fvLPvsQPpccNn09ROFaQ-bokJ39txQhZ_Jk/exec';
+// =====================================================
+
 const PASTEL_COLORS = [
   { name: 'ラベンダー',   main: '#7F77DD', light: '#EEEDFE', dark: '#3C3489' },
   { name: 'ミント',       main: '#5DCAA5', light: '#E1F5EE', dark: '#085041' },
@@ -15,21 +20,81 @@ const PASTEL_COLORS = [
   { name: 'バター',       main: '#EF9F27', light: '#FAEEDA', dark: '#854F0B' },
 ];
 
-let weightData = [
-  { date: '2025-05-24', w: [38.5, 32.1, 29.8] },
-  { date: '2025-05-23', w: [38.2, 32.4, 30.1] },
-  { date: '2025-05-22', w: [38.8, 31.9, 29.5] },
-  { date: '2025-05-21', w: [37.9, 32.0, 30.0] },
-  { date: '2025-05-20', w: [38.1, 32.2, 29.7] },
-];
-
-let vetData = [
-  { date: '2025-04-15', cost: 4200, notes: '定期健診・体重測定・爪切り' },
-];
-
-let goalWeights = [38.0, 32.0, 30.0];
-let charts = [null, null, null];
+let weightData  = [];
+let vetData     = [];
+let goalWeights = [null, null, null];
+let charts      = [null, null, null];
 let currentColorIdx = 0;
+
+// ── API ──────────────────────────────────────────────────
+async function apiLoad() {
+  const res  = await fetch(GAS_URL + '?action=load');
+  const json = await res.json();
+  return json;
+}
+
+async function apiSave(data) {
+  await fetch(GAS_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'save', data }),
+  });
+}
+
+function buildSavePayload() {
+  return {
+    weightData,
+    vetData,
+    config: {
+      names:       [0,1,2].map(i => getBirdName(i)),
+      goalWeights,
+      themeIdx:    currentColorIdx,
+    },
+  };
+}
+
+async function saveAll() {
+  showToast('保存中…');
+  try {
+    await apiSave(buildSavePayload());
+    showToast('保存しました');
+  } catch {
+    showToast('保存に失敗しました');
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────
+async function init() {
+  showLoading(true);
+  buildColorGrid();
+  buildChartCards();
+
+  try {
+    const d = await apiLoad();
+    if (d.weightData)          weightData  = d.weightData;
+    if (d.vetData)             vetData     = d.vetData;
+    if (d.config) {
+      if (d.config.names) {
+        d.config.names.forEach((n, i) => {
+          const el = document.getElementById('name' + i);
+          if (el) el.value = n || '';
+        });
+      }
+      if (d.config.goalWeights) goalWeights = d.config.goalWeights;
+      if (typeof d.config.themeIdx === 'number') applyTheme(d.config.themeIdx);
+    }
+  } catch {
+    showToast('データの読み込みに失敗しました');
+  }
+
+  showLoading(false);
+  updateHeaders();
+  renderTable();
+  renderVet();
+}
+
+function showLoading(show) {
+  document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+}
 
 // ── Theme ──────────────────────────────────────────────
 function applyTheme(idx) {
@@ -53,7 +118,7 @@ function buildColorGrid() {
     btn.style.background = c.main;
     btn.title = c.name;
     btn.setAttribute('aria-label', c.name);
-    btn.onclick = () => applyTheme(i);
+    btn.onclick = () => { applyTheme(i); saveAll(); };
     grid.appendChild(btn);
   });
 }
@@ -72,11 +137,9 @@ function showToast(msg) {
 
 function downloadBlob(content, filename, type) {
   const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
 }
 
@@ -111,12 +174,14 @@ function renderTable() {
 function setWeight(idx, bird, val) {
   weightData[idx].w[bird] = parseFloat(val) || 0;
   if (charts[0]) refreshCharts();
+  saveAll();
 }
 
 function addRow() {
   const today = new Date().toISOString().slice(0, 10);
   weightData.unshift({ date: today, w: [null, null, null] });
   renderTable();
+  saveAll();
 }
 
 // ── Charts ───────────────────────────────────────────────
@@ -126,7 +191,7 @@ function getChartData(bi) {
     .sort((a, b) => a.date.localeCompare(b.date));
   return {
     labels: s.map(r => r.date.slice(5).replace('-', '/')),
-    data: s.map(r => parseFloat(parseFloat(r.w[bi]).toFixed(1))),
+    data:   s.map(r => parseFloat(parseFloat(r.w[bi]).toFixed(1))),
   };
 }
 
@@ -134,7 +199,7 @@ function buildChartCards() {
   const wrap = document.getElementById('chartsWrap');
   wrap.innerHTML = '';
   for (let i = 0; i < 3; i++) {
-    const gv = goalWeights[i] || '';
+    const gv   = goalWeights[i] || '';
     const name = getBirdName(i);
     wrap.innerHTML += `
       <div class="chart-card">
@@ -161,65 +226,48 @@ function buildChartCards() {
 function setGoal(bi, val) {
   goalWeights[bi] = parseFloat(val) || null;
   refreshCharts();
+  saveAll();
 }
 
 function buildChart(id, bi) {
   const { labels, data } = getChartData(bi);
-  const col = PASTEL_COLORS[currentColorIdx].main;
+  const col  = PASTEL_COLORS[currentColorIdx].main;
   const goal = goalWeights[bi];
-  const ctx = document.getElementById(id);
+  const ctx  = document.getElementById(id);
   if (!ctx) return null;
 
   const datasets = [{
-    label: '実測',
-    data,
-    borderColor: col,
-    backgroundColor: col + '28',
-    borderWidth: 2,
-    pointRadius: 3,
-    pointBackgroundColor: col,
-    fill: true,
-    tension: 0.35,
+    label: '実測', data,
+    borderColor: col, backgroundColor: col + '28',
+    borderWidth: 2, pointRadius: 3, pointBackgroundColor: col,
+    fill: true, tension: 0.35,
   }];
 
   if (goal != null && !isNaN(goal) && labels.length > 0) {
     datasets.push({
-      label: '目標',
-      data: labels.map(() => goal),
-      borderColor: '#E24B4A',
-      borderWidth: 1.5,
-      borderDash: [5, 4],
-      pointRadius: 0,
-      fill: false,
-      tension: 0,
+      label: '目標', data: labels.map(() => goal),
+      borderColor: '#E24B4A', borderWidth: 1.5, borderDash: [5, 4],
+      pointRadius: 0, fill: false, tension: 0,
     });
   }
 
   const allVals = [...data, ...(goal ? [goal] : [])].filter(v => v != null);
   const minV = allVals.length ? Math.min(...allVals) : 0;
   const maxV = allVals.length ? Math.max(...allVals) : 50;
-  const pad = Math.max((maxV - minV) * 0.3, 1);
+  const pad  = Math.max((maxV - minV) * 0.3, 1);
 
   return new Chart(ctx.getContext('2d'), {
     type: 'line',
     data: { labels, datasets },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        x: {
-          ticks: { font: { size: 10 }, maxRotation: 45, color: '#888780' },
-          grid: { display: false },
-        },
+        x: { ticks: { font: { size: 10 }, maxRotation: 45, color: '#888780' }, grid: { display: false } },
         y: {
           min: parseFloat((minV - pad).toFixed(1)),
           max: parseFloat((maxV + pad).toFixed(1)),
-          ticks: {
-            font: { size: 10 },
-            color: '#888780',
-            callback: v => parseFloat(v.toFixed(1)),
-          },
+          ticks: { font: { size: 10 }, color: '#888780', callback: v => parseFloat(v.toFixed(1)) },
           grid: { color: 'rgba(136,135,128,0.15)' },
         },
       },
@@ -236,13 +284,12 @@ function refreshCharts() {
 
 // ── Vet records ──────────────────────────────────────────
 function renderVet() {
-  const list = document.getElementById('vetList');
+  const list   = document.getElementById('vetList');
   const sorted = [...vetData].sort((a, b) => b.date.localeCompare(a.date));
   list.innerHTML = sorted.length === 0
-    ? '<p style="font-size:13px;color:var(--text-secondary)">まだ記録がありません</p>'
-    : '';
+    ? '<p style="font-size:13px;color:var(--text-secondary)">まだ記録がありません</p>' : '';
   sorted.forEach(v => {
-    const ri = vetData.indexOf(v);
+    const ri   = vetData.indexOf(v);
     const card = document.createElement('div');
     card.className = 'vet-card';
     card.innerHTML = `
@@ -264,116 +311,54 @@ function addVet() {
   const n = document.getElementById('vetNotes').value.trim();
   if (!d) { showToast('日付を入力してください'); return; }
   vetData.push({ date: d, cost: c, notes: n });
-  document.getElementById('vetDate').value = '';
-  document.getElementById('vetCost').value = '';
+  document.getElementById('vetDate').value  = '';
+  document.getElementById('vetCost').value  = '';
   document.getElementById('vetNotes').value = '';
   renderVet();
-  showToast('保存しました');
+  saveAll();
 }
 
 function delVet(idx) {
   vetData.splice(idx, 1);
   renderVet();
+  saveAll();
 }
 
 // ── Tab switching ────────────────────────────────────────
 function switchTab(n) {
-  document.querySelectorAll('.btab').forEach((t, i) =>
-    t.classList.toggle('active', i === n)
-  );
-  document.querySelectorAll('.panel').forEach((p, i) =>
-    p.classList.toggle('active', i === n)
-  );
+  document.querySelectorAll('.btab').forEach((t, i) => t.classList.toggle('active', i === n));
+  document.querySelectorAll('.panel').forEach((p, i) => p.classList.toggle('active', i === n));
   if (n === 1) setTimeout(refreshCharts, 60);
 }
 
-// ── Backup ───────────────────────────────────────────────
-function exportJSON() {
-  const names = [0, 1, 2].map(i => getBirdName(i));
-  const payload = {
-    names,
-    weightData,
-    vetData,
-    goalWeights,
-    themeIdx: currentColorIdx,
-    exportedAt: new Date().toISOString(),
-  };
-  downloadBlob(
-    JSON.stringify(payload, null, 2),
-    'pet_backup_' + new Date().toISOString().slice(0, 10) + '.json',
-    'application/json'
-  );
-  showToast('JSONエクスポートしました');
+// ── Settings ─────────────────────────────────────────────
+function onNameInput() {
+  updateHeaders();
+  saveAll();
 }
 
+// ── Backup (local) ───────────────────────────────────────
 function exportCSV() {
   const names = [0, 1, 2].map(i => getBirdName(i));
-  const BOM = '\uFEFF';
+  const BOM   = '\uFEFF';
   let csv = BOM;
-
   csv += '【体重記録】\n';
   csv += `日付,${names[0]}(g),${names[1]}(g),${names[2]}(g)\n`;
-  [...weightData]
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .forEach(r => {
-      csv += r.date + ',' +
-        [0, 1, 2].map(i =>
-          r.w[i] != null && r.w[i] !== 0 ? parseFloat(r.w[i].toFixed(1)) : ''
-        ).join(',') + '\n';
-    });
-
+  [...weightData].sort((a, b) => b.date.localeCompare(a.date)).forEach(r => {
+    csv += r.date + ',' + [0,1,2].map(i =>
+      r.w[i] != null && r.w[i] !== 0 ? parseFloat(r.w[i].toFixed(1)) : ''
+    ).join(',') + '\n';
+  });
   csv += '\n【目標体重】\n';
   csv += names.map(n => n + '目標(g)').join(',') + '\n';
   csv += goalWeights.map(g => g != null ? parseFloat(g.toFixed(1)) : '').join(',') + '\n';
-
-  csv += '\n【通院記録】\n';
-  csv += '日付,費用(円),治療・検査内容\n';
-  [...vetData]
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .forEach(v => {
-      const notes = '"' + v.notes.replace(/"/g, '""') + '"';
-      csv += `${v.date},${v.cost},${notes}\n`;
-    });
-
-  downloadBlob(
-    csv,
-    'pet_data_' + new Date().toISOString().slice(0, 10) + '.csv',
-    'text/csv;charset=utf-8'
-  );
+  csv += '\n【通院記録】\n日付,費用(円),治療・検査内容\n';
+  [...vetData].sort((a, b) => b.date.localeCompare(a.date)).forEach(v => {
+    csv += `${v.date},${v.cost},"${v.notes.replace(/"/g, '""')}"\n`;
+  });
+  downloadBlob(csv, 'pet_data_' + new Date().toISOString().slice(0,10) + '.csv', 'text/csv;charset=utf-8');
   showToast('CSVエクスポートしました');
 }
 
-function importData(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const d = JSON.parse(e.target.result);
-      if (d.weightData)  weightData  = d.weightData;
-      if (d.vetData)     vetData     = d.vetData;
-      if (d.goalWeights) goalWeights = d.goalWeights;
-      if (d.names) {
-        d.names.forEach((n, i) => {
-          const el = document.getElementById('name' + i);
-          if (el) el.value = n;
-        });
-      }
-      if (typeof d.themeIdx === 'number') applyTheme(d.themeIdx);
-      updateHeaders();
-      renderTable();
-      renderVet();
-      showToast('インポートしました');
-    } catch {
-      showToast('ファイルの読み込みに失敗しました');
-    }
-  };
-  reader.readAsText(file);
-  input.value = '';
-}
-
-// ── Init ─────────────────────────────────────────────────
-buildColorGrid();
-buildChartCards();
-renderTable();
-renderVet();
+// ── Start ─────────────────────────────────────────────────
+init();
