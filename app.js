@@ -305,7 +305,7 @@ function renderTable() {
     group.appendChild(body);
     wrap.appendChild(group);
 
-    if (isOpen) body.style.maxHeight = (body.scrollHeight + 200) + 'px';
+    body.style.maxHeight = isOpen ? (body.scrollHeight + 200) + 'px' : '0px';
   });
 }
 
