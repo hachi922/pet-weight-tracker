@@ -2,7 +2,7 @@
 
 // =====================================================
 // ★ここにGoogle Apps ScriptのURLを貼り付けてください★
-const GAS_URL = 'YOUR_GAS_URL_HERE';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzr9HPjLCASNLLEza_pzS5nYixHAUiK6fvLPvsQPpccNn09ROFaQ-bokJ39txQhZ_Jk/exec';
 // =====================================================
 
 const PASTEL_COLORS = [
