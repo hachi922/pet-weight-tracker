@@ -1,9 +1,6 @@
 'use strict';
 
-// =====================================================
-// ★ここにGoogle Apps ScriptのURLを貼り付けてください★
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzr9HPjLCASNLLEza_pzS5nYixHAUiK6fvLPvsQPpccNn09ROFaQ-bokJ39txQhZ_Jk/exec';
-// =====================================================
 
 const PASTEL_COLORS = [
   { name: 'ラベンダー',   main: '#7F77DD', light: '#EEEDFE', dark: '#3C3489' },
@@ -28,44 +25,54 @@ let currentColorIdx = 0;
 let collapsedYears  = new Set();
 let pendingDelete   = null;
 
-// ── Date helpers
-// タイムゾーンをJSTに合わせた今日の日付を返す
+// ── Date helpers ─────────────────────────────────────────
 function todayJST() {
-  const now = new Date();
-  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  const y = jst.getUTCFullYear();
-  const m = String(jst.getUTCMonth() + 1).padStart(2, '0');
-  const d = String(jst.getUTCDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  var now = new Date();
+  var jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  var y = jst.getUTCFullYear();
+  var m = String(jst.getUTCMonth() + 1).padStart(2, '0');
+  var d = String(jst.getUTCDate()).padStart(2, '0');
+  return y + '-' + m + '-' + d;
 }
 
- ─────────────────────────────────────────
-// GASから "2026-05-24" や "2026-05-24T15:00:00.000Z" で返ることがある
 function normalizeISO(val) {
-  if (!val) return null;
-  const m = String(val).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+  if (!val || val === '') return '';
+  if (val instanceof Date) {
+    var jst = new Date(val.getTime() + 9 * 60 * 60 * 1000);
+    var y = jst.getUTCFullYear();
+    var m = String(jst.getUTCMonth() + 1).padStart(2, '0');
+    var d = String(jst.getUTCDate()).padStart(2, '0');
+    return y + '-' + m + '-' + d;
+  }
+  var s = String(val).trim();
+  var p = s.replace(/\//g, '-').split('-');
+  if (p.length === 3) {
+    var y2 = p[0].length === 4 ? p[0] : '20' + p[0];
+    return y2 + '-' + p[1].padStart(2, '0') + '-' + p[2].slice(0, 2).padStart(2, '0');
+  }
+  return s.slice(0, 10);
 }
 
 function toDisplay(iso) {
-  const s = normalizeISO(iso) || String(iso);
-  const p = s.split('-');
+  var s = normalizeISO(iso) || String(iso);
+  var p = s.split('-');
+  if (p.length < 3) return s;
   return p[0].slice(2) + '/' + p[1] + '/' + p[2];
 }
 
 function toISO(disp) {
-  const p = disp.replace(/-/g, '/').split('/');
+  var p = disp.replace(/-/g, '/').split('/');
   if (p.length !== 3) return null;
-  let [y, m, d] = p;
+  var y = p[0], m = p[1], d = p[2];
   if (y.length === 2) y = '20' + y;
   if (y.length !== 4) return null;
-  const iso = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  var iso = y + '-' + m.padStart(2, '0') + '-' + d.padStart(2, '0');
   return isNaN(Date.parse(iso)) ? null : iso;
 }
 
 // ── Dialog ────────────────────────────────────────────────
 function askDelete(type, idx, msg) {
-  pendingDelete = { type, idx };
+  pendingDelete = { type: type, idx: idx };
   document.getElementById('dialogMsg').textContent = msg;
   document.getElementById('dialogOverlay').classList.add('show');
 }
@@ -77,7 +84,8 @@ function closeDialog() {
 
 function confirmDelete() {
   if (!pendingDelete) return;
-  const { type, idx } = pendingDelete;
+  var type = pendingDelete.type;
+  var idx  = pendingDelete.idx;
   closeDialog();
   if (type === 'row') {
     weightData.splice(idx, 1);
@@ -93,10 +101,10 @@ function confirmDelete() {
 
 // ── API ──────────────────────────────────────────────────
 async function apiLoad() {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 15000);
   try {
-    const res = await fetch(GAS_URL + '?action=load', {
+    var res = await fetch(GAS_URL + '?action=load', {
       signal: controller.signal,
       redirect: 'follow',
     });
@@ -111,18 +119,19 @@ async function apiLoad() {
 async function apiSave(data) {
   await fetch(GAS_URL, {
     method: 'POST',
-    body: JSON.stringify({ action: 'save', data }),
+    body: JSON.stringify({ action: 'save', data: data }),
+    redirect: 'follow',
   });
 }
 
 function buildSavePayload() {
   return {
-    weightData,
-    vetData,
+    weightData: weightData,
+    vetData: vetData,
     config: {
-      names:       [0,1,2].map(i => getBirdName(i)),
-      goalWeights,
-      themeIdx:    currentColorIdx,
+      names: [0, 1, 2].map(function(i) { return getBirdName(i); }),
+      goalWeights: goalWeights,
+      themeIdx: currentColorIdx,
     },
   };
 }
@@ -130,7 +139,7 @@ function buildSavePayload() {
 async function saveAll() {
   try {
     await apiSave(buildSavePayload());
-  } catch {
+  } catch (e) {
     showToast('保存に失敗しました');
   }
 }
@@ -141,13 +150,13 @@ async function init() {
   buildColorGrid();
 
   try {
-    const d = await apiLoad();
+    var d = await apiLoad();
     if (d.weightData) weightData = d.weightData;
     if (d.vetData)    vetData    = d.vetData;
     if (d.config) {
       if (d.config.names) {
-        d.config.names.forEach((n, i) => {
-          const el = document.getElementById('name' + i);
+        d.config.names.forEach(function(n, i) {
+          var el = document.getElementById('name' + i);
           if (el) el.value = n || '';
         });
       }
@@ -155,7 +164,7 @@ async function init() {
       if (typeof d.config.themeIdx === 'number') applyTheme(d.config.themeIdx);
     }
   } catch (e) {
-    showToast('データの読み込みに失敗しました（オフライン？）');
+    showToast('データの読み込みに失敗しました');
   }
 
   showLoading(false);
@@ -171,46 +180,47 @@ function showLoading(show) {
 // ── Theme ──────────────────────────────────────────────
 function applyTheme(idx) {
   currentColorIdx = idx;
-  const c = PASTEL_COLORS[idx];
+  var c = PASTEL_COLORS[idx];
   document.documentElement.style.setProperty('--accent', c.main);
   document.documentElement.style.setProperty('--accent-light', c.light);
   document.documentElement.style.setProperty('--accent-text', c.dark);
   document.getElementById('colorLabel').textContent = '現在：' + c.name;
-  document.querySelectorAll('.color-swatch').forEach((s, i) =>
-    s.classList.toggle('selected', i === idx)
-  );
+  document.querySelectorAll('.color-swatch').forEach(function(s, i) {
+    s.classList.toggle('selected', i === idx);
+  });
   if (charts[0]) refreshCharts();
 }
 
 function buildColorGrid() {
-  const grid = document.getElementById('colorGrid');
-  PASTEL_COLORS.forEach((c, i) => {
-    const btn = document.createElement('button');
+  var grid = document.getElementById('colorGrid');
+  PASTEL_COLORS.forEach(function(c, i) {
+    var btn = document.createElement('button');
     btn.className = 'color-swatch' + (i === 0 ? ' selected' : '');
     btn.style.background = c.main;
     btn.title = c.name;
     btn.setAttribute('aria-label', c.name);
-    btn.onclick = () => { applyTheme(i); saveAll(); };
+    btn.onclick = function() { applyTheme(i); saveAll(); };
     grid.appendChild(btn);
   });
 }
 
 // ── Helpers ─────────────────────────────────────────────
 function getBirdName(i) {
-  return document.getElementById('name' + i)?.value || ('鳥' + (i + 1));
+  var el = document.getElementById('name' + i);
+  return el ? (el.value || ('鳥' + (i + 1))) : ('鳥' + (i + 1));
 }
 
 function showToast(msg) {
-  const t = document.getElementById('toast');
+  var t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
+  setTimeout(function() { t.classList.remove('show'); }, 2200);
 }
 
 function downloadBlob(content, filename, type) {
-  const blob = new Blob([content], { type });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
+  var blob = new Blob([content], { type: type });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
   a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
 }
@@ -230,12 +240,11 @@ function updateHeaders() {
 }
 
 function toggleYear(year) {
-  const currentYear = String(new Date().getFullYear());
-  const defaultOpen = year === currentYear;
-  const manualOpen  = collapsedYears.has('open:' + year);
-  const manualClose = collapsedYears.has('close:' + year);
-  const nowOpen = manualOpen ? true : manualClose ? false : defaultOpen;
-  // トグル
+  var currentYear = String(new Date().getFullYear());
+  var defaultOpen = (year === currentYear);
+  var manualOpen  = collapsedYears.has('open:' + year);
+  var manualClose = collapsedYears.has('close:' + year);
+  var nowOpen = manualOpen ? true : manualClose ? false : defaultOpen;
   collapsedYears.delete('open:' + year);
   collapsedYears.delete('close:' + year);
   if (nowOpen) {
@@ -247,78 +256,74 @@ function toggleYear(year) {
 }
 
 function renderTable() {
-  const wrap = document.getElementById('weightGroups');
+  var wrap = document.getElementById('weightGroups');
   wrap.innerHTML = '';
 
-  const byYear = {};
-  weightData.forEach((row, ri) => {
-    const y = row.date.slice(0, 4);
+  var byYear = {};
+  weightData.forEach(function(row, ri) {
+    var y = normalizeISO(row.date).slice(0, 4);
     if (!byYear[y]) byYear[y] = [];
-    byYear[y].push({ row, ri });
+    byYear[y].push({ row: row, ri: ri });
   });
 
-  const years = Object.keys(byYear).sort((a, b) => b - a);
-  const currentYear = String(new Date().getFullYear());
+  var years = Object.keys(byYear).sort(function(a, b) { return b - a; });
+  var currentYear = String(new Date().getFullYear());
 
-  years.forEach(year => {
-    const rows   = byYear[year].sort((a, b) => b.row.date.localeCompare(a.row.date));
-    // 今年はデフォルトで開く。前年以前はデフォルトで折り畳む。
-    // ユーザーが手動でトグルした年は collapsedYears で管理。
-    let isOpen;
-    if (collapsedYears.has('open:' + year)) {
-      isOpen = true;  // 手動で開いた
-    } else if (collapsedYears.has('close:' + year)) {
-      isOpen = false; // 手動で閉じた
-    } else {
-      isOpen = year === currentYear; // デフォルト：今年のみ開く
-    }
-    const group  = document.createElement('div');
+  years.forEach(function(year) {
+    var rows = byYear[year].sort(function(a, b) {
+      return normalizeISO(b.row.date).localeCompare(normalizeISO(a.row.date));
+    });
+
+    var manualOpen  = collapsedYears.has('open:' + year);
+    var manualClose = collapsedYears.has('close:' + year);
+    var isOpen = manualOpen ? true : manualClose ? false : (year === currentYear);
+
+    var group = document.createElement('div');
     group.className = 'year-group';
 
-    const hdr = document.createElement('div');
+    var hdr = document.createElement('div');
     hdr.className = 'year-header';
-    hdr.onclick = () => toggleYear(year);
-    hdr.innerHTML = `
-      <span class="year-label">${year}年</span>
-      <span style="display:flex;align-items:center;gap:8px">
-        <span class="year-meta">${rows.length}件</span>
-        <i class="ti ti-chevron-down year-chevron ${isOpen ? 'open' : ''}"></i>
-      </span>`;
+    hdr.onclick = function() { toggleYear(year); };
+    hdr.innerHTML =
+      '<span class="year-label">' + year + '年</span>' +
+      '<span style="display:flex;align-items:center;gap:8px">' +
+        '<span class="year-meta">' + rows.length + '件</span>' +
+        '<i class="ti ti-chevron-down year-chevron' + (isOpen ? ' open' : '') + '"></i>' +
+      '</span>';
     group.appendChild(hdr);
 
-    const body = document.createElement('div');
+    var body = document.createElement('div');
     body.className = 'year-body' + (isOpen ? '' : ' collapsed');
+    body.style.maxHeight = isOpen ? '9999px' : '0px';
 
-    const names = [0,1,2].map(i => getBirdName(i));
-    const tbl   = document.createElement('table');
-    // 日付:54px 体重3列:auto 削除:22px
-    tbl.innerHTML = `
-      <colgroup><col style="width:54px"><col><col><col><col style="width:22px"></colgroup>
-      <thead><tr>
-        <th>日付</th>
-        <th>${names[0]}<br><span class="unit">(g)</span></th>
-        <th>${names[1]}<br><span class="unit">(g)</span></th>
-        <th>${names[2]}<br><span class="unit">(g)</span></th>
-        <th></th>
-      </tr></thead>`;
+    var names = [0, 1, 2].map(function(i) { return getBirdName(i); });
+    var tbl = document.createElement('table');
+    tbl.innerHTML =
+      '<colgroup><col style="width:54px"><col><col><col><col style="width:22px"></colgroup>' +
+      '<thead><tr>' +
+        '<th>日付</th>' +
+        '<th>' + names[0] + '<br><span class="unit">(g)</span></th>' +
+        '<th>' + names[1] + '<br><span class="unit">(g)</span></th>' +
+        '<th>' + names[2] + '<br><span class="unit">(g)</span></th>' +
+        '<th></th>' +
+      '</tr></thead>';
 
-    const tbody = document.createElement('tbody');
-    rows.forEach(({ row, ri }) => {
-      const disp = toDisplay(row.date);
-      const tr   = document.createElement('tr');
+    var tbody = document.createElement('tbody');
+    rows.forEach(function(item) {
+      var row = item.row;
+      var ri  = item.ri;
+      var disp = toDisplay(row.date);
+      var tr = document.createElement('tr');
       tr.innerHTML =
-        `<td>
-          <span class="date-display" id="dd-${ri}" onclick="startEditDate(${ri})">${disp}</span>
-          <input class="date-edit" id="de-${ri}" type="text" value="${disp}" placeholder="yy/mm/dd"
-            onblur="commitDate(${ri})" onkeydown="if(event.key==='Enter')this.blur()">
-        </td>` +
-        [0,1,2].map(i =>
-          `<td><input type="number" step="0.1" value="${row.w[i] || ''}" placeholder="-"
-            onchange="setWeight(${ri}, ${i}, this.value)"></td>`
-        ).join('') +
-        `<td><button class="del-btn" onclick="askDelete('row', ${ri}, '${disp} のデータを削除します')" aria-label="削除">
-          <i class="ti ti-trash"></i>
-        </button></td>`;
+        '<td>' +
+          '<span class="date-display" id="dd-' + ri + '" onclick="startEditDate(' + ri + ')">' + disp + '</span>' +
+          '<input class="date-edit" id="de-' + ri + '" type="text" value="' + disp + '" placeholder="yy/mm/dd"' +
+            ' onblur="commitDate(' + ri + ')" onkeydown="if(event.key===\'Enter\')this.blur()">' +
+        '</td>' +
+        '<td><input type="number" step="0.1" value="' + (row.w[0] || '') + '" placeholder="-" onchange="setWeight(' + ri + ',0,this.value)"></td>' +
+        '<td><input type="number" step="0.1" value="' + (row.w[1] || '') + '" placeholder="-" onchange="setWeight(' + ri + ',1,this.value)"></td>' +
+        '<td><input type="number" step="0.1" value="' + (row.w[2] || '') + '" placeholder="-" onchange="setWeight(' + ri + ',2,this.value)"></td>' +
+        '<td><button class="del-btn" onclick="askDelete(\'row\',' + ri + ',\'' + disp + ' のデータを削除します\')" aria-label="削除"><i class="ti ti-trash"></i></button></td>';
       tbody.appendChild(tr);
     });
 
@@ -326,14 +331,13 @@ function renderTable() {
     body.appendChild(tbl);
     group.appendChild(body);
     wrap.appendChild(group);
-
-    body.style.maxHeight = isOpen ? (body.scrollHeight + 200) + 'px' : '0px';
   });
 }
 
 function startEditDate(ri) {
-  document.getElementById('dd-' + ri)?.classList.add('hidden');
-  const inp = document.getElementById('de-' + ri);
+  var dd = document.getElementById('dd-' + ri);
+  if (dd) dd.classList.add('hidden');
+  var inp = document.getElementById('de-' + ri);
   if (!inp) return;
   inp.classList.add('active');
   inp.focus();
@@ -341,13 +345,13 @@ function startEditDate(ri) {
 }
 
 function commitDate(ri) {
-  const inp  = document.getElementById('de-' + ri);
+  var inp = document.getElementById('de-' + ri);
   if (!inp) return;
-  const iso  = toISO(inp.value.trim());
-  const warn = document.getElementById('dupWarning');
+  var iso  = toISO(inp.value.trim());
+  var warn = document.getElementById('dupWarning');
   if (!iso) {
     inp.value = toDisplay(weightData[ri].date);
-  } else if (weightData.some((r, i) => i !== ri && r.date === iso)) {
+  } else if (weightData.some(function(r, i) { return i !== ri && normalizeISO(r.date) === iso; })) {
     warn.style.display = 'block';
     inp.value = toDisplay(weightData[ri].date);
   } else {
@@ -366,53 +370,53 @@ function setWeight(idx, bird, val) {
 }
 
 function addRow() {
-  const today = todayJST();
-  const warn  = document.getElementById('dupWarning');
-  if (weightData.some(r => r.date === today)) { warn.style.display = 'block'; return; }
+  var today = todayJST();
+  var warn  = document.getElementById('dupWarning');
+  if (weightData.some(function(r) { return normalizeISO(r.date) === today; })) {
+    warn.style.display = 'block';
+    return;
+  }
   warn.style.display = 'none';
   weightData.unshift({ date: today, w: [null, null, null] });
-  // 行追加時は今年を強制的に開く
   collapsedYears.delete('close:' + today.slice(0, 4));
   renderTable();
-  saveAll().catch(() => {}); // 保存失敗してもUIは止めない
+  saveAll();
 }
 
 // ── Charts ───────────────────────────────────────────────
 function getChartData(bi) {
-  const s = [...weightData]
-    .filter(r => r.w[bi] != null && r.w[bi] !== 0)
-    .sort((a, b) => a.date.localeCompare(b.date));
+  var s = weightData
+    .filter(function(r) { return r.w[bi] != null && r.w[bi] !== 0; })
+    .sort(function(a, b) { return normalizeISO(a.date).localeCompare(normalizeISO(b.date)); });
   return {
-    labels: s.map(r => r.date.slice(5).replace('-', '/')),
-    data:   s.map(r => parseFloat(parseFloat(r.w[bi]).toFixed(1))),
+    labels: s.map(function(r) { return normalizeISO(r.date).slice(5).replace('-', '/'); }),
+    data:   s.map(function(r) { return parseFloat(parseFloat(r.w[bi]).toFixed(1)); }),
   };
 }
 
 function buildChartCards() {
-  const wrap = document.getElementById('chartsWrap');
+  var wrap = document.getElementById('chartsWrap');
   wrap.innerHTML = '';
-  for (let i = 0; i < 3; i++) {
-    const gv   = goalWeights[i] || '';
-    const name = getBirdName(i);
-    wrap.innerHTML += `
-      <div class="chart-card">
-        <div class="chart-header">
-          <div class="chart-title">${name} 体重推移</div>
-          <div class="goal-row">
-            <span class="goal-label">目標</span>
-            <input class="goal-input" type="number" step="0.1" value="${gv}"
-              placeholder="--" id="goal${i}" onchange="setGoal(${i}, this.value)">
-            <span class="goal-unit">g</span>
-          </div>
-        </div>
-        <div class="legend-row">
-          <span class="legend-item">
-            <span class="legend-dot" style="background:${PASTEL_COLORS[currentColorIdx].main}"></span>実測
-          </span>
-          <span class="legend-item"><span class="legend-dash"></span>目標</span>
-        </div>
-        <div class="chart-wrap"><canvas id="c${i}" role="img" aria-label="${name}の体重グラフ"></canvas></div>
-      </div>`;
+  for (var i = 0; i < 3; i++) {
+    var gv   = goalWeights[i] || '';
+    var name = getBirdName(i);
+    var card = document.createElement('div');
+    card.className = 'chart-card';
+    card.innerHTML =
+      '<div class="chart-header">' +
+        '<div class="chart-title">' + name + ' 体重推移</div>' +
+        '<div class="goal-row">' +
+          '<span class="goal-label">目標</span>' +
+          '<input class="goal-input" type="number" step="0.1" value="' + gv + '" placeholder="--" id="goal' + i + '" onchange="setGoal(' + i + ',this.value)">' +
+          '<span class="goal-unit">g</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="legend-row">' +
+        '<span class="legend-item"><span class="legend-dot" style="background:' + PASTEL_COLORS[currentColorIdx].main + '"></span>実測</span>' +
+        '<span class="legend-item"><span class="legend-dash"></span>目標</span>' +
+      '</div>' +
+      '<div class="chart-wrap"><canvas id="c' + i + '" role="img" aria-label="' + name + 'の体重グラフ"></canvas></div>';
+    wrap.appendChild(card);
   }
 }
 
@@ -423,44 +427,58 @@ function setGoal(bi, val) {
 }
 
 function buildChart(id, bi) {
-  const { labels, data } = getChartData(bi);
-  const col  = PASTEL_COLORS[currentColorIdx].main;
-  const goal = goalWeights[bi];
-  const ctx  = document.getElementById(id);
+  var cd   = getChartData(bi);
+  var col  = PASTEL_COLORS[currentColorIdx].main;
+  var goal = goalWeights[bi];
+  var ctx  = document.getElementById(id);
   if (!ctx) return null;
 
-  const datasets = [{
-    label: '実測', data,
-    borderColor: col, backgroundColor: col + '28',
-    borderWidth: 2, pointRadius: 0, pointHoverRadius: 0,
-    fill: true, tension: 0,
+  var datasets = [{
+    label: '実測',
+    data: cd.data,
+    borderColor: col,
+    backgroundColor: col + '28',
+    borderWidth: 2,
+    pointRadius: 0,
+    pointHoverRadius: 0,
+    fill: true,
+    tension: 0,
   }];
 
-  if (goal != null && !isNaN(goal) && labels.length > 0) {
+  if (goal != null && !isNaN(goal) && cd.labels.length > 0) {
     datasets.push({
-      label: '目標', data: labels.map(() => goal),
-      borderColor: '#E24B4A', borderWidth: 1.5, borderDash: [5, 4],
-      pointRadius: 0, fill: false, tension: 0,
+      label: '目標',
+      data: cd.labels.map(function() { return goal; }),
+      borderColor: '#E24B4A',
+      borderWidth: 1.5,
+      borderDash: [5, 4],
+      pointRadius: 0,
+      fill: false,
+      tension: 0,
     });
   }
 
-  const allVals = [...data, ...(goal ? [goal] : [])].filter(v => v != null);
-  const minV = allVals.length ? Math.min(...allVals) : 0;
-  const maxV = allVals.length ? Math.max(...allVals) : 50;
-  const pad  = Math.max((maxV - minV) * 0.3, 1);
+  var allVals = cd.data.concat(goal != null ? [goal] : []).filter(function(v) { return v != null; });
+  var minV = allVals.length ? Math.min.apply(null, allVals) : 0;
+  var maxV = allVals.length ? Math.max.apply(null, allVals) : 50;
+  var pad  = Math.max((maxV - minV) * 0.3, 1);
 
   return new Chart(ctx.getContext('2d'), {
     type: 'line',
-    data: { labels, datasets },
+    data: { labels: cd.labels, datasets: datasets },
     options: {
-      responsive: true, maintainAspectRatio: false,
+      responsive: true,
+      maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        x: { ticks: { font: { size: 10 }, maxRotation: 45, color: '#888780' }, grid: { display: false } },
+        x: {
+          ticks: { font: { size: 10 }, maxRotation: 45, color: '#888780' },
+          grid: { display: false },
+        },
         y: {
           min: parseFloat((minV - pad).toFixed(1)),
           max: parseFloat((maxV + pad).toFixed(1)),
-          ticks: { font: { size: 10 }, color: '#888780', callback: v => parseFloat(v.toFixed(1)) },
+          ticks: { font: { size: 10 }, color: '#888780', callback: function(v) { return parseFloat(v.toFixed(1)); } },
           grid: { color: 'rgba(136,135,128,0.15)' },
         },
       },
@@ -469,7 +487,7 @@ function buildChart(id, bi) {
 }
 
 function refreshCharts() {
-  for (let i = 0; i < 3; i++) {
+  for (var i = 0; i < 3; i++) {
     if (charts[i]) { charts[i].destroy(); charts[i] = null; }
     charts[i] = buildChart('c' + i, i);
   }
@@ -477,34 +495,34 @@ function refreshCharts() {
 
 // ── Vet records ──────────────────────────────────────────
 function renderVet() {
-  const list   = document.getElementById('vetList');
-  const sorted = [...vetData].sort((a, b) => b.date.localeCompare(a.date));
+  var list   = document.getElementById('vetList');
+  var sorted = vetData.slice().sort(function(a, b) {
+    return normalizeISO(b.date).localeCompare(normalizeISO(a.date));
+  });
   list.innerHTML = sorted.length === 0
     ? '<p style="font-size:13px;color:var(--text-secondary)">まだ記録がありません</p>' : '';
-  sorted.forEach(v => {
-    const ri       = vetData.indexOf(v);
-    const safeDate = v.date.replace(/-/g, '/');
-    const card     = document.createElement('div');
+  sorted.forEach(function(v) {
+    var ri       = vetData.indexOf(v);
+    var safeDate = normalizeISO(v.date).replace(/-/g, '/');
+    var card     = document.createElement('div');
     card.className = 'vet-card';
-    card.innerHTML = `
-      <div class="vet-card-header">
-        <span class="vet-date"><i class="ti ti-calendar" style="font-size:13px"></i> ${safeDate}</span>
-        <span style="display:flex;align-items:center;gap:8px">
-          <span class="vet-cost">¥${v.cost.toLocaleString()}</span>
-          <button class="vet-del" onclick="askDelete('vet', ${ri}, '${safeDate} の通院記録を削除します')" aria-label="削除">
-            <i class="ti ti-x"></i>
-          </button>
-        </span>
-      </div>
-      <div class="vet-notes">${v.notes.replace(/\n/g, '<br>')}</div>`;
+    card.innerHTML =
+      '<div class="vet-card-header">' +
+        '<span class="vet-date"><i class="ti ti-calendar" style="font-size:13px"></i> ' + safeDate + '</span>' +
+        '<span style="display:flex;align-items:center;gap:8px">' +
+          '<span class="vet-cost">¥' + v.cost.toLocaleString() + '</span>' +
+          '<button class="vet-del" onclick="askDelete(\'vet\',' + ri + ',\'' + safeDate + ' の通院記録を削除します\')" aria-label="削除"><i class="ti ti-x"></i></button>' +
+        '</span>' +
+      '</div>' +
+      '<div class="vet-notes">' + v.notes.replace(/\n/g, '<br>') + '</div>';
     list.appendChild(card);
   });
 }
 
 function addVet() {
-  const d = document.getElementById('vetDate').value;
-  const c = parseInt(document.getElementById('vetCost').value) || 0;
-  const n = document.getElementById('vetNotes').value.trim();
+  var d = document.getElementById('vetDate').value;
+  var c = parseInt(document.getElementById('vetCost').value) || 0;
+  var n = document.getElementById('vetNotes').value.trim();
   if (!d) { showToast('日付を入力してください'); return; }
   vetData.push({ date: d, cost: c, notes: n });
   document.getElementById('vetDate').value  = '';
@@ -517,34 +535,33 @@ function addVet() {
 
 // ── Tab switching ────────────────────────────────────────
 function switchTab(n) {
-  document.querySelectorAll('.btab').forEach((t, i) => t.classList.toggle('active', i === n));
-  document.querySelectorAll('.panel').forEach((p, i) => p.classList.toggle('active', i === n));
+  document.querySelectorAll('.btab').forEach(function(t, i) { t.classList.toggle('active', i === n); });
+  document.querySelectorAll('.panel').forEach(function(p, i) { p.classList.toggle('active', i === n); });
   if (n === 1) setTimeout(refreshCharts, 60);
 }
 
 // ── CSV Export ───────────────────────────────────────────
 function exportCSV() {
-  const names = [0,1,2].map(i => getBirdName(i));
-  const BOM   = '\uFEFF';
-  let csv = BOM;
-
-  csv += '【体重記録】\n';
-  csv += `日付,${names[0]}(g),${names[1]}(g),${names[2]}(g)\n`;
-  [...weightData].sort((a, b) => b.date.localeCompare(a.date)).forEach(r => {
-    csv += r.date + ',' + [0,1,2].map(i =>
-      r.w[i] != null && r.w[i] !== 0 ? parseFloat(r.w[i].toFixed(1)) : ''
-    ).join(',') + '\n';
+  var names = [0, 1, 2].map(function(i) { return getBirdName(i); });
+  var BOM   = '\uFEFF';
+  var csv   = BOM + '【体重記録】\n';
+  csv += '日付,' + names[0] + '(g),' + names[1] + '(g),' + names[2] + '(g)\n';
+  weightData.slice().sort(function(a, b) {
+    return normalizeISO(b.date).localeCompare(normalizeISO(a.date));
+  }).forEach(function(r) {
+    csv += normalizeISO(r.date) + ',' + [0, 1, 2].map(function(i) {
+      return r.w[i] != null && r.w[i] !== 0 ? parseFloat(r.w[i].toFixed(1)) : '';
+    }).join(',') + '\n';
   });
-
   csv += '\n【目標体重】\n';
-  csv += names.map(n => n + '目標(g)').join(',') + '\n';
-  csv += goalWeights.map(g => g != null ? parseFloat(g.toFixed(1)) : '').join(',') + '\n';
-
+  csv += names.map(function(n) { return n + '目標(g)'; }).join(',') + '\n';
+  csv += goalWeights.map(function(g) { return g != null ? parseFloat(g.toFixed(1)) : ''; }).join(',') + '\n';
   csv += '\n【通院記録】\n日付,費用(円),治療・検査内容\n';
-  [...vetData].sort((a, b) => b.date.localeCompare(a.date)).forEach(v => {
-    csv += `${v.date},${v.cost},"${v.notes.replace(/"/g, '""')}"\n`;
+  vetData.slice().sort(function(a, b) {
+    return normalizeISO(b.date).localeCompare(normalizeISO(a.date));
+  }).forEach(function(v) {
+    csv += normalizeISO(v.date) + ',' + v.cost + ',"' + v.notes.replace(/"/g, '""') + '"\n';
   });
-
   downloadBlob(csv, 'pet_data_' + todayJST() + '.csv', 'text/csv;charset=utf-8');
   showToast('CSVエクスポートしました');
 }
